@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name   Remove Pinterest Sponsored Pins In Feed
 // @author Noah Leigh
-// @match  https://www.pinterest.com/*
+// @match  https://*.pinterest.com/*
 // ==/UserScript==
 
 // Create the button
