@@ -2,6 +2,7 @@
 // @name   Remove Pinterest Promoted/Picked For You Pins In Feed
 // @author Noah Leigh
 // @match  https://*.pinterest.com/*
+// @grant  none
 // ==/UserScript==
 
 // Create the buttons
