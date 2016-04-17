@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filter Pins
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
 // @author       noahleigh
 // @match        https://*.pinterest.com/
@@ -43,11 +43,14 @@ var filters = {
 
 // Create the buttons and register listeners
 var leftHeaderContent = document.querySelector('.leftHeaderContent');
-document.querySelector('.Header.Module.full').style.height = '65px';
+document.querySelector('.Header.Module.full').style.height = '84px';
+document.querySelector('.appContent').style.paddingTop = '84px';
 for (var filter in filters) {
 	var button = document.createElement("button");
 	button.innerHTML = "Hide "+filters[filter].name;
+	button.className = 'Button btn';
 	button.id = 'btn-'+filter;
+	button.style.margin = '5px';
 	button.filter = filter;
 	button.addEventListener('click', toggleVisibilityOnClick, false);
 	leftHeaderContent.appendChild(button);
