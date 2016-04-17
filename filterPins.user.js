@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Filter Pins
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.1.0
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
 // @author       noahleigh
-// @match        https://*.pinterest.com/
+// @match        https://*.pinterest.com/*
 // ==/UserScript==
 
 // Define list of filters
@@ -41,30 +41,39 @@ var filters = {
 	}
 };
 
+// FUNCTION DEFINTIONS
 // Create the buttons and register listeners
-var leftHeaderContent = document.querySelector('.leftHeaderContent');
-document.querySelector('.Header.Module.full').style.height = '84px';
-document.querySelector('.appContent').style.paddingTop = '84px';
-for (var filter in filters) {
-	var button = document.createElement("button");
-	button.innerHTML = "Hide "+filters[filter].name;
-	button.className = 'Button btn';
-	button.id = 'btn-'+filter;
-	button.style.margin = '5px';
-	button.filter = filter;
-	button.addEventListener('click', toggleVisibilityOnClick, false);
-	leftHeaderContent.appendChild(button);
-}
-var gridItems = document.querySelector('.GridItems');
-var observer = new MutationObserver(function(mutations){
-	mutations.forEach(function(mutation){
-		if (mutation.addedNodes.length > 0){
-			setVisibilityOnNodes(mutation.addedNodes);
-		}
+function init(){
+	// Expand header to make room for the buttons
+	document.querySelector('.Header.Module.full').style.height = '84px';
+	document.querySelector('.appContent').style.paddingTop = '84px';
+
+	// Get the element that will contain the new buttons
+	var leftHeaderContent = document.querySelector('.leftHeaderContent');
+
+	// Create a button for each filter.
+	for (var filter in filters) {
+		var button = document.createElement("button");
+		button.innerHTML = (filters[filter].state ? "Show " : "Hide ")+filters[filter].name;
+		button.id = 'btn-'+filter;
+		button.className = 'Button btn';
+		button.style.margin = '5px';
+		button.filter = filter;
+		button.addEventListener('click', toggleVisibilityOnClick, false);
+		leftHeaderContent.appendChild(button);
+	}
+
+	// Watch for new pins being loaded and apply filtering to them
+	var gridItems = document.querySelector('.GridItems');
+	var observer = new MutationObserver(function(mutations){
+		mutations.forEach(function(mutation){
+			if (mutation.addedNodes.length > 0){
+				setVisibilityOnNodes(mutation.addedNodes);
+			}
+		});
 	});
-});
-observer.observe(gridItems, {childList: true});
-// window.addEventListener('scroll', makeScrollHandler, false);
+	observer.observe(gridItems, {childList: true});
+}
 
 // Returns an array of elements that matched the provided filter string
 function filterItems(nodeList, string){
@@ -82,7 +91,7 @@ function toggleVisibilityOnClick(event){
 		this.innerHTML = "Hide "+filters[event.target.filter].name;
 	}
 	var filteredItems = filters[event.target.filter].elements();
-	toggleVisibility(filteredItems);
+	toggleVisibility(filteredItems, event.target.filter);
 }
 
 function setVisibilityOnNodes(nodeList){
@@ -108,9 +117,9 @@ function showItem(item){
 }
 
 // Intelligently toggles the display ("block" vs "none") of each element of the provided array of elements.
-function toggleVisibility(filteredItems){
+function toggleVisibility(filteredItems, filter){
 	for (var i = 0; i < filteredItems.length; ++i) {
-		if (isVisible(filteredItems[i])) {
+		if (filters[filter].state) {
 			hideItem(filteredItems[i]);
 		} else {
 			showItem(filteredItems[i]);
@@ -118,7 +127,10 @@ function toggleVisibility(filteredItems){
 	}
 }
 
-// Test if
+// Test if an element is set to visisble or not.
 function isVisible(element){
 	return window.getComputedStyle(element,null).visibility != "hidden";
 }
+
+// EXECUTE
+init();
