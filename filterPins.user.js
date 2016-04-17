@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filter Pins
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
 // @author       noahleigh
 // @match        https://*.pinterest.com/
@@ -10,18 +10,33 @@
 // Define list of filters
 var filters = {
 	'find-friends': {
-		'name': 'Invite Friends',
-		'selector': function(){return document.querySelectorAll('.UserNews');},
+		'name': 'Invite friends',
+		'elements': function(){
+			return filterItems(
+				document.querySelectorAll('.item'),
+				'Invite friends'
+			);
+		},
 		'state': false
 	},
 	'picked': {
-		'name': 'Picked for You',
-		'selector': function(){return filterItems('Picked for you');},
+		'name': 'Picked for you',
+		'elements': function(){
+			return filterItems(
+				document.querySelectorAll('.item'),
+				'Picked for you'
+			);
+		},
 		'state': false
 	},
 	'promoted': {
-		'name': 'Promoted By...',
-		'selector': function(){return filterItems('Promoted by');},
+		'name': 'Promoted by',
+		'elements': function(){
+			return filterItems(
+				document.querySelectorAll('.item'),
+				'Promoted by'
+			);
+		},
 		'state': false
 	}
 };
@@ -34,20 +49,28 @@ for (var filter in filters) {
 	button.innerHTML = "Hide "+filters[filter].name;
 	button.id = 'btn-'+filter;
 	button.filter = filter;
-	button.addEventListener('click', makeClickHandler, false);
+	button.addEventListener('click', toggleVisibilityOnClick, false);
 	leftHeaderContent.appendChild(button);
 }
-window.addEventListener('scroll', makeScrollHandler, false);
+var gridItems = document.querySelector('.GridItems');
+var observer = new MutationObserver(function(mutations){
+	mutations.forEach(function(mutation){
+		if (mutation.addedNodes.length > 0){
+			setVisibilityOnNodes(mutation.addedNodes);
+		}
+	});
+});
+observer.observe(gridItems, {childList: true});
+// window.addEventListener('scroll', makeScrollHandler, false);
 
 // Returns an array of elements that matched the provided filter string
-function filterItems(filterString){
-	var items = document.querySelectorAll(".item");
-	return [].filter.call(items, function(item){
-		return RegExp(filterString).test(item.textContent);
+function filterItems(nodeList, string){
+	return [].filter.call(nodeList, function(node){
+		return RegExp(string).test(node.textContent);
 	});
 }
 
-function makeClickHandler(event){
+function toggleVisibilityOnClick(event){
 	if (filters[event.target.filter].state === false){
 		filters[event.target.filter].state = true;
 		this.innerHTML = "Show "+filters[event.target.filter].name;
@@ -55,14 +78,14 @@ function makeClickHandler(event){
 		filters[event.target.filter].state = false;
 		this.innerHTML = "Hide "+filters[event.target.filter].name;
 	}
-	var filteredItems = filters[event.target.filter].selector();
+	var filteredItems = filters[event.target.filter].elements();
 	toggleVisibility(filteredItems);
 }
 
-function makeScrollHandler(event){
+function setVisibilityOnNodes(nodeList){
 	for (var filter in filters) {
 		if (filters[filter].state) {
-			var filteredItems = filters[filter].selector();
+			var filteredItems = filterItems(nodeList, filters[filter].name);
 			for (var i = 0; i < filteredItems.length; ++i) {
 				if (isVisible(filteredItems[i])) {
 					hideItem(filteredItems[i]);
@@ -92,7 +115,7 @@ function toggleVisibility(filteredItems){
 	}
 }
 
-// Test if an element is set to be visible.
+// Test if
 function isVisible(element){
 	return window.getComputedStyle(element,null).visibility != "hidden";
 }
