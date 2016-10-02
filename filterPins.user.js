@@ -1,136 +1,151 @@
 // ==UserScript==
 // @name         Filter Pins
 // @namespace    http://tampermonkey.net/
-// @version      2.1.0
+// @version      3.0.0
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
 // @author       noahleigh
 // @match        https://*.pinterest.com/*
 // ==/UserScript==
+(function filterPins() {
+    // FUNCTIONS
 
-// Define list of filters
-var filters = {
-	'find-friends': {
-		'name': 'Invite friends',
-		'elements': function(){
-			return filterItems(
-				document.querySelectorAll('.item'),
-				'Invite friends'
-			);
-		},
-		'state': false
-	},
-	'picked': {
-		'name': 'Picked for you',
-		'elements': function(){
-			return filterItems(
-				document.querySelectorAll('.item'),
-				'Picked for you'
-			);
-		},
-		'state': false
-	},
-	'promoted': {
-		'name': 'Promoted by',
-		'elements': function(){
-			return filterItems(
-				document.querySelectorAll('.item'),
-				'Promoted by'
-			);
-		},
-		'state': false
-	}
-};
+    /**
+     * Returns an object of arrays of nodes, with each array corresponding to a filter
+     * rule.
+     *
+     * @param {NodeList} nodeList - A NodeList returned from document.querySelectorAll()
+     * @param {Object} options - An Object where keys correspond to filter rules.
+     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
+     * filter rule is active.
+     * @param {string} options.<filterName>.pattern - The string to match against to determine if
+     * the node belongs to that filter.
+     * @returns {Object} An object of arrays of nodes, with each array corresponding to a filter
+     * rule.
+     */
+    const filterNodes = function filterNodes(nodeList, options) {
+        const filteredNodes = {};
+        Object.keys(options).forEach((key) => {
+            // Turn the NodeList into a proper Array so we can .filter() it.
+            filteredNodes[key] = Array.prototype.slice.call(nodeList).filter(node => (
+                // Return true if the pattern text exists in the element.
+                RegExp(options[key].pattern).test(node.textContent)
+            ));
+        });
+        return filteredNodes;
+    };
 
-// FUNCTION DEFINTIONS
-// Create the buttons and register listeners
-function init(){
-	// Expand header to make room for the buttons
-	document.querySelector('.Header.Module.full').style.height = '84px';
-	document.querySelector('.appContent').style.paddingTop = '84px';
+    /**
+     * Sets the display CSS rule for the elements in filteredNodes according to the active status
+     * of the filter in the options object.
+     *
+     * @param {Object} filteredNodes - An object returned from filterNodes()
+     * @param {Object} options - An Object where keys correspond to filter rules.
+     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
+     * filter rule is active.
+     * @param {string} options.<filterName>.pattern - The string to match against to determine if
+     * the node belongs to that filter.
+     */
+    const setDisplayValue = function setDisplayValue(filteredNodes, options) {
+        Object.keys(options).forEach((key) => {
+            // Determine the 'display' value from the filter active state
+            const displayValue = options[key].active ? 'none' : 'block';
+            // Set the 'display' value for each element
+            filteredNodes[key].forEach(element => (element.style.display = displayValue)); // eslint-disable-line no-param-reassign
+        });
+    };
 
-	// Get the element that will contain the new buttons
-	var leftHeaderContent = document.querySelector('.leftHeaderContent');
+    /**
+     * Returns an array of <button> elements for toggling filter rules in options.
+     *
+     * @param {Object} options - An Object where keys correspond to filter rules.
+     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
+     * filter rule is active.
+     * @param {string} options.<filterName>.pattern - The string to match against to determine if
+     * the node belongs to that filter.
+     * @returns {array} An array of <button> elements to be inserted into the DOM
+     */
+    const createFilterButtons = function createFilterButtons(options) {
+        // Return an array with .map()
+        return Object.keys(options).map((filter) => {
+            // Create the <button> element
+            const button = document.createElement('button');
 
-	// Create a button for each filter.
-	for (var filter in filters) {
-		var button = document.createElement("button");
-		button.innerHTML = (filters[filter].state ? "Show " : "Hide ")+filters[filter].name;
-		button.id = 'btn-'+filter;
-		button.className = 'Button btn';
-		button.style.margin = '5px';
-		button.filter = filter;
-		button.addEventListener('click', toggleVisibilityOnClick, false);
-		leftHeaderContent.appendChild(button);
-	}
+            // Add styling for Pinterest
+            button.className = 'Button btn';
+            button.style.margin = '0px 5px';
 
-	// Watch for new pins being loaded and apply filtering to them
-	var gridItems = document.querySelector('.GridItems');
-	var observer = new MutationObserver(function(mutations){
-		mutations.forEach(function(mutation){
-			if (mutation.addedNodes.length > 0){
-				setVisibilityOnNodes(mutation.addedNodes);
-			}
-		});
-	});
-	observer.observe(gridItems, {childList: true});
-}
+            // Set the textContent based on the filter active state
+            // (template literals not used for IE compatability)
+            button.textContent = (options[filter].active ? 'Show ' : 'Hide ') + options[filter].pattern + ' Pins';
 
-// Returns an array of elements that matched the provided filter string
-function filterItems(nodeList, string){
-	return [].filter.call(nodeList, function(node){
-		return RegExp(string).test(node.textContent);
-	});
-}
+            // Add event listener for toggling filters
+            button.addEventListener('click', (event) => {
+                // Toggle the state of the attached filter
+                options[filter].active = !options[filter].active;
 
-function toggleVisibilityOnClick(event){
-	if (filters[event.target.filter].state === false){
-		filters[event.target.filter].state = true;
-		this.innerHTML = "Show "+filters[event.target.filter].name;
-	} else {
-		filters[event.target.filter].state = false;
-		this.innerHTML = "Hide "+filters[event.target.filter].name;
-	}
-	var filteredItems = filters[event.target.filter].elements();
-	toggleVisibility(filteredItems, event.target.filter);
-}
+                // Set the diplay value of the .item's in the .GridItems container based on the new
+                // active state
+                setDisplayValue(filterNodes(document.querySelectorAll('.GridItems .item'), options), options);
 
-function setVisibilityOnNodes(nodeList){
-	for (var filter in filters) {
-		if (filters[filter].state) {
-			var filteredItems = filterItems(nodeList, filters[filter].name);
-			for (var i = 0; i < filteredItems.length; ++i) {
-				if (isVisible(filteredItems[i])) {
-					hideItem(filteredItems[i]);
-				}
-			}
-		}
-	}
-}
-// Hides the provided DOM element
-function hideItem(item){
-	item.style.visibility = "hidden";
-}
+                // Update the button text
+                button.textContent = (options[filter].active ? 'Show ' : 'Hide ') + options[filter].pattern + ' Pins';
+            });
 
-// Displays the provided DOM element
-function showItem(item){
-	item.style.visibility = "visible";
-}
+            return button;
+        });
+    };
 
-// Intelligently toggles the display ("block" vs "none") of each element of the provided array of elements.
-function toggleVisibility(filteredItems, filter){
-	for (var i = 0; i < filteredItems.length; ++i) {
-		if (filters[filter].state) {
-			hideItem(filteredItems[i]);
-		} else {
-			showItem(filteredItems[i]);
-		}
-	}
-}
+    /**
+     * Create:
+     *  - the filterOptions object
+     *  - the buttons for toggling the filter active states
+     *  - the MutationObserver for applying filter rules as the page loads new pins
+     */
+    const init = function init() {
+        // This object defines the filters and their current state (initally false)
+        const filterOptions = {
+            hidePromoted: {
+                active: false,
+                pattern: 'Promoted by',
+            },
+            hidePicked: {
+                active: false,
+                pattern: 'Picked for you',
+            },
+            hideIdeas: {
+                active: false,
+                pattern: 'Ideas for you',
+            },
+        };
 
-// Test if an element is set to visisble or not.
-function isVisible(element){
-	return window.getComputedStyle(element,null).visibility != "hidden";
-}
+        // Create the buttons and add them to the left of the search bar.
+        createFilterButtons(filterOptions).forEach(button => (
+            document.querySelector('.leftHeaderContent').appendChild(button)
+        ));
 
-// EXECUTE
-init();
+        // Setup an observer for new nodes being added as the page scrolls
+        const observer = new MutationObserver((mutationRecordArray) => {
+            mutationRecordArray.forEach((mutationRecord) => {
+                if (mutationRecord.addedNodes.length) {
+                    setDisplayValue(
+                        filterNodes(mutationRecord.addedNodes, filterOptions),
+                        filterOptions
+                    );
+                }
+            });
+        });
+
+        // Start the observer
+        observer.observe(
+            document.querySelector('.GridItems'),
+            {
+                childList: true,
+                attributes: true,
+                attributeFilter: ['style'],
+            }
+        );
+    };
+
+    // Start the UserScript
+    init();
+}());
