@@ -15,20 +15,20 @@
      *
      * @param {NodeList} nodeList - A NodeList returned from document.querySelectorAll()
      * @param {Object} options - An Object where keys correspond to filter rules.
-     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
-     * filter rule is active.
-     * @param {string} options.<filterName>.pattern - The string to match against to determine if
-     * the node belongs to that filter.
+     * @param {boolean} options.filterRules.<filterName>.active - A boolean value indicating whether
+     * or not the filter rule is active.
+     * @param {string} options.filterRules.<filterName>.pattern - The string to match against to
+     * determine if the node belongs to that filter.
      * @returns {Object} An object of arrays of nodes, with each array corresponding to a filter
      * rule.
      */
     const filterNodes = function filterNodes(nodeList, options) {
         const filteredNodes = {};
-        Object.keys(options).forEach((key) => {
+        Object.keys(options.filterRules).forEach((key) => {
             // Turn the NodeList into a proper Array so we can .filter() it.
             filteredNodes[key] = Array.prototype.slice.call(nodeList).filter(node => (
                 // Return true if the pattern text exists in the element.
-                RegExp(options[key].pattern).test(node.textContent)
+                RegExp(options.filterRules[key].pattern).test(node.textContent)
             ));
         });
         return filteredNodes;
@@ -40,17 +40,17 @@
      *
      * @param {Object} filteredNodes - An object returned from filterNodes()
      * @param {Object} options - An Object where keys correspond to filter rules.
-     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
-     * filter rule is active.
-     * @param {string} options.<filterName>.pattern - The string to match against to determine if
-     * the node belongs to that filter.
+     * @param {boolean} options.filterRules.<filterName>.active - A boolean value indicating whether
+     * or not the filter rule is active.
+     * @param {string} options.filterRules.<filterName>.pattern - The string to match against to
+     * determine if the node belongs to that filter.
      */
     const setDisplayValue = function setDisplayValue(filteredNodes, options) {
-        Object.keys(options).forEach((key) => {
+        Object.keys(options.filterRules).forEach((key) => {
             // Determine the 'display' value from the filter active state
-            const displayValue = options[key].active ? 'none' : 'block';
+            const displayValue = options.filterRules[key].active ? 'none' : 'block';
             // Set the 'display' value for each element
-            filteredNodes[key].forEach(element => (element.style.display = displayValue)); // eslint-disable-line no-param-reassign
+            filteredNodes[key].forEach(element => (element.style.display = displayValue)); // eslint-disable-line no-param-reassign, max-len
         });
     };
 
@@ -58,15 +58,18 @@
      * Returns an array of <button> elements for toggling filter rules in options.
      *
      * @param {Object} options - An Object where keys correspond to filter rules.
-     * @param {boolean} options.<filterName>.active - A boolean value indicating whether or not the
-     * filter rule is active.
-     * @param {string} options.<filterName>.pattern - The string to match against to determine if
-     * the node belongs to that filter.
+     * @param {boolean} options.filterRules.<filterName>.active - A boolean value indicating whether
+     * or not the filter rule is active.
+     * @param {string} options.filterRules.<filterName>.pattern - The string to match against to
+     * determine if the node belongs to that filter.
      * @returns {array} An array of <button> elements to be inserted into the DOM
      */
     const createFilterButtons = function createFilterButtons(options) {
         // Return an array with .map()
-        return Object.keys(options).map((filter) => {
+        return Object.keys(options.filterRules).map((filter) => {
+            // Make a convenience constant
+            const filterRule = options.filterRules[filter];
+
             // Create the <button> element
             const button = document.createElement('button');
 
@@ -75,20 +78,20 @@
             button.style.margin = '0px 5px';
 
             // Set the textContent based on the filter active state
-            // (template literals not used for IE compatability)
-            button.textContent = (options[filter].active ? 'Show ' : 'Hide ') + options[filter].pattern + ' Pins';
+            button.textContent = `${filterRule.active ? 'Show ' : 'Hide '} ${filterRule.pattern} Pins`;
 
             // Add event listener for toggling filters
-            button.addEventListener('click', (event) => {
+            button.addEventListener('click', () => {
                 // Toggle the state of the attached filter
-                options[filter].active = !options[filter].active;
+                // options[filter].active = !options[filter].active;
+                options.toggleFilter(filter);
 
                 // Set the diplay value of the .item's in the .GridItems container based on the new
                 // active state
                 setDisplayValue(filterNodes(document.querySelectorAll('.GridItems .item'), options), options);
 
                 // Update the button text
-                button.textContent = (options[filter].active ? 'Show ' : 'Hide ') + options[filter].pattern + ' Pins';
+                button.textContent = `${filterRule.active ? 'Show ' : 'Hide '} ${filterRule.pattern} Pins`;
             });
 
             return button;
@@ -104,17 +107,22 @@
     const init = function init() {
         // This object defines the filters and their current state (initally false)
         const filterOptions = {
-            hidePromoted: {
-                active: false,
-                pattern: 'Promoted by',
+            filterRules: {
+                hidePromoted: {
+                    active: false,
+                    pattern: 'Promoted by',
+                },
+                hidePicked: {
+                    active: false,
+                    pattern: 'Picked for you',
+                },
+                hideIdeas: {
+                    active: false,
+                    pattern: 'Ideas for you',
+                },
             },
-            hidePicked: {
-                active: false,
-                pattern: 'Picked for you',
-            },
-            hideIdeas: {
-                active: false,
-                pattern: 'Ideas for you',
+            toggleFilter(filter) {
+                this.filterRules[filter].active = !this.filterRules[filter].active;
             },
         };
 
