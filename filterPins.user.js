@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Filter Pins
-// @namespace    http://tampermonkey.net/
+// @namespace    https://gist.github.com/noahleigh/
 // @version      3.0.2
+// @author       Noah Leigh
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
-// @author       noahleigh
+// @homepage     https://gist.github.com/noahleigh/0c71909a860d15ea56fd
 // @match        https://*.pinterest.com/*
 // ==/UserScript==
 (function filterPins() {
