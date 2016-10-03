@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filter Pins
 // @namespace    http://tampermonkey.net/
-// @version      3.0.0
+// @version      3.0.2
 // @description  Add buttons that let the user toggle the visibility of certain pins on Pinterest.
 // @author       noahleigh
 // @match        https://*.pinterest.com/*
@@ -127,8 +127,9 @@
         };
 
         // Create the buttons and add them to the left of the search bar.
+        const buttonContainer = document.querySelector('.leftHeaderContent');
         createFilterButtons(filterOptions).forEach(button => (
-            document.querySelector('.leftHeaderContent').appendChild(button)
+            buttonContainer.appendChild(button)
         ));
 
         // Setup an observer for new nodes being added as the page scrolls
